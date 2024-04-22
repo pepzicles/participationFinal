@@ -1,18 +1,17 @@
-var scene1 = true;
-var scene2 = false;
-
-
+let originalImage;
 let recognition;
 let finalTranscript = '';
-let currentImageDisplay = null; // This will hold the reference to the image currently displayed
+let currentGeneratedImage = null;
+let scene = 1;
+let button;
 
 function preload() {
   originalImage = loadImage('images/originalImage.jpeg');
 }
 
 function setup() {
-    createCanvas(1920, 1080);
-    textFont('Courier New');
+  createCanvas(1920, 1080);
+  textFont('Helvetica');
   const click_to_record = select('#click_to_record');
   const stop_recording = select('#stop_recording');
 
@@ -25,15 +24,54 @@ function setup() {
 
   click_to_record.mousePressed(startRecording);
   stop_recording.mousePressed(stopAndResetRecording);
+
+  // Create the button in scene 1
+  button = createButton('Click me');
+  button.position(width / 2, 200);
+  button.mousePressed(switchToScene2); // Call switchToScene2 function when the button is pressed
 }
 
 function draw() {
-    if (scene1 == true) {
-        fill(0, 255, 0);
-        textSize(35);
-        image(originalImage, 0, 0);
-        text("Describe this image with as much detail as possible", 200, 200);
-    }
+  background(255); // Clear the background
+
+  if (scene === 1) {
+    drawScene1();
+  } else if (scene === 2) {
+    drawScene2();
+  } else if (scene === 3) {
+    drawScene3();
+  }
+}
+
+function drawScene1() {
+  textSize(35);
+  textAlign(CENTER);
+  text("Press the button to start", width / 2, 100);
+  select('#click_to_record').hide();
+  select('#stop_recording').hide();
+  select('#convert_text').hide();
+}
+
+function drawScene2() {
+  image(originalImage, 400, 200);
+  fill(0);
+  textSize(35);
+  textAlign(CENTER);
+  text("Describe this image with as much detail as possible", width / 2, 100);
+  select('#click_to_record').show();
+  select('#stop_recording').show();
+  select('#convert_text').show();
+}
+
+function drawScene3() {
+  if (currentGeneratedImage) {
+    image(currentGeneratedImage, 0, 0); // Display the generated image
+  }
+}
+
+function switchToScene2() {
+  scene = 2; // Switch to scene 2
+  button.remove(); // Remove the button from scene 1
 }
 
 function startRecording() {
@@ -43,7 +81,7 @@ function startRecording() {
   setTimeout(() => {
     console.log("30 seconds passed, stopping and resetting recording.");
     stopAndResetRecording();
-  }, 15000); // Stop and reset after 30 seconds
+  }, 30000); // Stop and reset after 30 seconds
 }
 
 function stopAndResetRecording() {
@@ -52,7 +90,6 @@ function stopAndResetRecording() {
   console.log("Final transcript for this session:", finalTranscript);
   resetTranscription(); // Reset the transcript after stopping
 }
-
 
 function setupSpeechRecognition() {
   recognition = new SpeechRecognition();
@@ -72,8 +109,8 @@ function setupSpeechRecognition() {
   };
 
   recognition.onend = () => {
-      console.log("Recognition ended");
-      getImage(finalTranscript)
+    console.log("Recognition ended");
+    getImage(finalTranscript);
   };
 }
 
@@ -81,7 +118,6 @@ function resetTranscription() {
   finalTranscript = ''; // Clear the final transcript
   select('#convert_text').value(''); // Clear the input/display field
 }
-
 
 async function getImage(transcript) {
   const formData = new FormData();
@@ -104,13 +140,12 @@ async function getImage(transcript) {
     if (response.status === 200) {
       console.log("Image saved successfully.");
 
-      // Remove the previous image if there is one
-      if (currentImageDisplay) {
-        currentImageDisplay.remove();
-      }
-
-      // Create a new image and store its reference
-      currentImageDisplay = createImg(URL.createObjectURL(response.data), 'generated image');
+      // Load the generated image
+      loadImage(URL.createObjectURL(response.data), img => {
+        currentGeneratedImage = img;
+        // Switch to the third scene
+        scene = 3;
+      });
     } else {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
